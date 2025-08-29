@@ -1,5 +1,5 @@
 [build]
-command = "npm ci && npm run build"
+command = "npm install && npm run build"
 publish = "dist"
 functions = "netlify/functions"
 
@@ -11,8 +11,3 @@ NPM_FLAGS = "--no-fund --no-audit"
 command = "npm run dev"
 framework = "vite"
 targetPort = 5173
-
-[build]
-command = "npm install && npm run build"
-publish = "dist"
-functions = "netlify/functions"
