@@ -148,6 +148,24 @@ export function ComplianceLeadForm({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const clickAudioRef = React.useRef<HTMLAudioElement | null>(null);
+  const [emailError, setEmailError] = useState<string>('');
+
+  const isValidEmail = (email: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email.trim());
+  };
+
+  const isCorporateEmail = (email: string) => {
+    if (!isValidEmail(email)) return false;
+    const domain = email.split('@')[1]?.toLowerCase() || '';
+    const personalDomains = new Set([
+      'gmail.com','googlemail.com','yahoo.com','yahoo.co.in','hotmail.com','outlook.com','live.com','msn.com','aol.com','icloud.com','me.com','mac.com','proton.me','protonmail.com','pm.me','gmx.com','gmx.de','mail.com','yandex.com','yandex.ru','zoho.com','fastmail.com','hey.com','inbox.com','rediffmail.com'
+    ]);
+    const academicSuffixes = ['.edu', '.ac.uk', '.ac.in', '.edu.au', '.edu.in'];
+    if (personalDomains.has(domain)) return false;
+    if (academicSuffixes.some(s => domain.endsWith(s))) return false;
+    return true;
+  };
 
   const complianceOptions: Option[] = [
     { value: 'soc2', label: 'SOC 2' },
@@ -160,6 +178,10 @@ export function ComplianceLeadForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isCorporateEmail(formData.workEmail)) {
+      setEmailError('Please enter a valid work email');
+      return;
+    }
     setIsSubmitting(true);
     try { clickAudioRef.current?.currentTime && (clickAudioRef.current.currentTime = 0); clickAudioRef.current?.play().catch(() => {}); } catch {}
     
@@ -174,7 +196,7 @@ export function ComplianceLeadForm({
   const isFormValid = formData.firstName && 
                      formData.lastName && 
                      formData.companyName && 
-                     formData.workEmail && 
+                     isCorporateEmail(formData.workEmail) && 
                      formData.complianceStandards.length > 0;
 
   return (
@@ -274,9 +296,16 @@ export function ComplianceLeadForm({
                       type="email"
                       required
                       value={formData.workEmail}
-                      onChange={(e) => setFormData(prev => ({ ...prev, workEmail: e.target.value }))}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFormData(prev => ({ ...prev, workEmail: val }));
+                        setEmailError(val.length === 0 || isCorporateEmail(val) ? '' : 'Please enter a valid work email (no personal providers)');
+                      }}
                       placeholder="Enter your work email"
                     />
+                    {emailError && (
+                      <p className="text-xs text-red-400 mt-1">{emailError}</p>
+                    )}
                   </div>
 
                   {/* Compliance Standards */}
