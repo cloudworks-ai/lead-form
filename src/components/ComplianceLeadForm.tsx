@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import GlowingInput from '@/components/ui/GlowingInput';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
@@ -149,6 +149,17 @@ export function ComplianceLeadForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const clickAudioRef = React.useRef<HTMLAudioElement | null>(null);
   const [emailError, setEmailError] = useState<string>('');
+  const [utmParams, setUtmParams] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const keys = ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','ref'];
+      const collected: Record<string,string> = {};
+      keys.forEach(k => { const v = params.get(k); if (v) collected[k] = v; });
+      setUtmParams(collected);
+    } catch {}
+  }, []);
 
   const isValidEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -185,12 +196,31 @@ export function ComplianceLeadForm({
     setIsSubmitting(true);
     try { clickAudioRef.current?.currentTime && (clickAudioRef.current.currentTime = 0); clickAudioRef.current?.play().catch(() => {}); } catch {}
     
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Persist to Neon via Netlify Function
+    try {
+      await fetch('/.netlify/functions/submit-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          companyName: formData.companyName,
+          workEmail: formData.workEmail,
+          standards: formData.complianceStandards.map(s => s.value),
+          utm: utmParams,
+        })
+      })
+    } catch {}
     
     console.log('Form submitted:', formData);
-    // Redirect to calendar link after submit
-    window.location.href = calendarLink;
+    // Redirect to calendar link after submit with utm params preserved
+    try {
+      const url = new URL(calendarLink);
+      Object.entries(utmParams).forEach(([k,v]) => url.searchParams.set(k, v));
+      window.location.href = url.toString();
+    } catch {
+      window.location.href = calendarLink;
+    }
   };
 
   const isFormValid = formData.firstName && 
